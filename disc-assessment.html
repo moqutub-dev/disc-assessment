@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DISC Assessment</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .question-set {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    .question-set label {
+      display: block;
+      margin: 1.5rem 0;
+    }
+    .slider-labels-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 0.3rem;
+      margin-top: 0.8rem;
+    }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+    input[type="range"] {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+    .submit-btn {
+      display: block;
+      margin: 2rem auto;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      background-color: #0078D4;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .results {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 1.2rem;
+    }
+    canvas {
+      display: block;
+      margin: 2rem auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>DISC Personality Assessment</h1>
+  <p style="text-align:center;">Use the sliders to rate each statement from 1 (Least like you) to 4 (Most like you). You can rate each statement independently.</p>
+
+  <form id="discForm">
+    <div id="questionContainer"></div>
+    <button type="submit" class="submit-btn">Submit</button>
+  </form>
+
+  <canvas id="discChart" width="300" height="300"></canvas>
+  <div class="results" id="results"></div>
+<div style="text-align:center; margin-top: 1rem;">
+  <button onclick="printResults()" class="submit-btn" style="background-color:#555;">🖨️ Print Results</button>
+  <button onclick="saveResults()" class="submit-btn" style="background-color:#28a745;">💾 Save Results</button>
+</div>
+  <script>
+    const traits = ['D', 'I', 'S', 'C'];
+    const traitLabels = {
+      D: "Dominance",
+      I: "Influence",
+      S: "Steadiness",
+      C: "Conscientiousness"
+    };
+    const sectionTitles = [
+      "How You Lead", "How You Communicate", "How You Handle Change", "How You Work with Others",
+      "How You Solve Problems", "How You Stay Organized", "How You React Under Pressure", "How You Make Decisions",
+      "How You Motivate", "How You Collaborate", "How You Plan", "How You Reflect"
+    ];
+    const questions = [
+      ["I take charge in group settings.", "I enjoy energizing others.", "I support team harmony.", "I ensure rules are followed."],
+      ["I speak directly and confidently.", "I enjoy storytelling and humor.", "I listen more than I speak.", "I prefer written communication."],
+      ["I adapt quickly to change.", "I stay positive during transitions.", "I prefer stability and routine.", "I need time to process changes."],
+      ["I delegate tasks efficiently.", "I build rapport easily.", "I am loyal and dependable.", "I respect boundaries and roles."],
+      ["I tackle problems head-on.", "I brainstorm with others.", "I seek consensus.", "I analyze all options first."],
+      ["I focus on outcomes.", "I keep things light and flexible.", "I maintain steady routines.", "I create detailed plans."],
+      ["I stay calm and assertive.", "I use humor to defuse tension.", "I avoid conflict when possible.", "I double-check everything."],
+      ["I make quick decisions.", "I go with my gut feeling.", "I take time to reflect.", "I rely on data and logic."],
+      ["I push others to achieve.", "I inspire with enthusiasm.", "I encourage cooperation.", "I set high standards."],
+      ["I lead group discussions.", "I enjoy social events.", "I support team members quietly.", "I prefer structured collaboration."],
+      ["I plan for the long term.", "I adapt plans as needed.", "I stick to proven methods.", "I document everything carefully."],
+      ["I reflect on past experiences.", "I share stories to connect.", "I value emotional consistency.", "I analyze what went right or wrong."]
+    ];
+
+    const container = document.getElementById('questionContainer');
+
+    questions.forEach((group, index) => {
+      const div = document.createElement('div');
+      div.className = 'question-set';
+      div.innerHTML = `<h3>${sectionTitles[index]}</h3>`;
+      group.forEach((q, i) => {
+        const inputId = `q${index}_${i}`;
+        div.innerHTML += `
+          <label for="${inputId}">
+            <strong>${q}</strong>
+            <div class="slider-labels-top">
+              <span>1 (Least like you)</span>
+              <span>4 (Most like you)</span>
+            </div>
+            <input type="range" id="${inputId}" name="q${index}" data-trait="${traits[i]}" min="1" max="4" value="2">
+            <div class="slider-label"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+          </label>
+        `;
+      });
+      container.appendChild(div);
+    });
+function drawChart(scores) {
+      const canvas = document.getElementById('discChart');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const total = scores.D + scores.I + scores.S + scores.C;
+      const values = [
+        scores.D / total,
+        scores.I / total,
+        scores.S / total,
+        scores.C / total
+      ];
+
+      const colors = ["#e74c3c", "#f1c40f", "#2ecc71", "#3498db"];
+      const labels = ["D - Dominance", "I - Influence", "S - Steadiness", "C - Conscientiousness"];
+
+      const centerX = 150;
+      const centerY = 150;
+      const radius = 120;
+      let startAngle = -Math.PI; // Start at top-left
+
+      for (let i = 0; i < 4; i++) {
+        const sliceAngle = values[i] * 2 * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.fillStyle = colors[i];
+        ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+        ctx.fill();
+
+        // Label
+        const midAngle = startAngle + sliceAngle / 2;
+        const labelX = centerX + 90 * Math.cos(midAngle);
+        const labelY = centerY + 90 * Math.sin(midAngle);
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 13px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(labels[i], labelX, labelY);
+
+        startAngle += sliceAngle;
+      }
+    }
+
+    function generateInterpretation(primary, secondary) {
+      const descriptions = {
+        D: "You are a natural leader who thrives on challenges and results. As a Dominance (D) type, you are assertive, confident, and often take charge in situations. You value efficiency and are not afraid to make tough decisions.",
+        I: "You are enthusiastic, outgoing, and love connecting with others. As an Influence (I) type, you bring energy to teams and are often the spark that keeps things moving. Your optimism is contagious and helps build strong relationships.",
+        S: "You are dependable, calm, and supportive. As a Steadiness (S) type, you value harmony and consistency, and others often turn to you for stability. You are a great listener and team player who thrives in cooperative environments.",
+        C: "You are analytical, detail-oriented, and value accuracy. As a Conscientiousness (C) type, you prefer structure and logic, and you take pride in doing things the right way. Others rely on your thoroughness and precision."
+      };
+
+      const advice = {
+        D: "When working with others, remember that not everyone moves at your pace. Be patient with Steadiness (S) and Conscientiousness (C) types who prefer stability and detail. Your drive can inspire, but balance it with empathy.",
+        I: "Your enthusiasm is powerful, but be mindful of Conscientiousness (C) and Steadiness (S) types who may prefer quieter, more structured environments. Listening actively will help you build even stronger relationships.",
+        S: "Your calm nature is a strength, but don’t shy away from asserting your needs. Dominance (D) and Influence (I) types may move faster, so finding your voice will help you collaborate more effectively.",
+        C: "Your precision is invaluable, but remember that flexibility can foster creativity. Influence (I) and Dominance (D) types may prefer speed over perfection, so aim for balance when working in diverse teams."
+      };
+
+      return `
+        <p><strong>${primary} - ${traitLabels[primary]}</strong>: ${descriptions[primary]}</p>
+        <p>${advice[primary]} Your secondary trait, <strong>${secondary} - ${traitLabels[secondary]}</strong>, complements this by adding depth to your personality and influencing how you relate to others.</p>
+      `;
+    }
+
+    document.getElementById('discForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const scores = { D: 0, I: 0, S: 0, C: 0 };
+      const inputs = document.querySelectorAll('input[type="range"]');
+
+      inputs.forEach(input => {
+        const trait = input.dataset.trait;
+        scores[trait] += parseInt(input.value);
+      });
+
+      drawChart(scores);
+
+      const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+      const primary = sorted[0][0];
+      const secondary = sorted[1][0];
+
+      const interpretation = generateInterpretation(primary, secondary);
+
+      document.getElementById('results').innerHTML = `
+        <h2>Your DISC Profile</h2>
+        <p><strong>Scores:</strong> D: ${scores.D}, I: ${scores.I}, S: ${scores.S}, C: ${scores.C}</p>
+        ${interpretation}
+      `;
+    });
+function printResults() {
+  const printWindow = window.open('', '', 'height=600,width=800');
+  printWindow.document.write('<html><head><title>DISC Results</title></head><body>');
+  printWindow.document.write(document.getElementById('results').innerHTML);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.print();
+}
+
+function saveResults() {
+  const resultsText = document.getElementById('results').innerText;
+  const blob = new Blob([resultsText], { type: 'text/plain' });
+  const link = document.createElement('a');
+  link.download = 'DISC_Results.txt';
+  link.href = window.URL.createObjectURL(blob);
+  link.click();
+}
+  </script>
+</body>
+</html>
+
